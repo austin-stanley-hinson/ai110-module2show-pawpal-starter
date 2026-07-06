@@ -18,7 +18,7 @@ I ended up with four: Owner, Pet, Task, and Scheduler. I chose Owner because the
 
 The biggest change was with Scheduler. At first I had it working off a single Pet, like you'd point it at one animal and get that pet's schedule. But once I re-read the scenario, an owner can have more than one pet, and it would be annoying to build a separate schedule per pet. So I changed Scheduler to take the Owner instead, and now it looks at every pet the owner has and gathers all their tasks together. That's why Owner also got a get_all_tasks method, so the Scheduler has an easy way to reach across pets.
 
-I haven't implemented or tested the actual logic yet since this is only Phase 1 (skeleton and design), so the method bodies are still stubs. This section is mostly about the design decisions so far, and I'll update it once I start filling in the scheduling behavior.
+Update after Phase 2: I moved from the design into working code, so the UML skeleton is now real classes with actual method bodies instead of `pass`. The main thing I had to check was that Scheduler was not only looking at one pet, since the project expects it to organize tasks across multiple pets. I kept it working through the Owner, so Scheduler calls `owner.get_all_tasks()` and gets tasks from every pet at once. I built a small CLI demo in `main.py` and ran it before doing anything else, because it was easier to see from the terminal whether the objects were actually working together. I also added a couple of pytest tests for simple behavior like completing a task and adding a task to a pet. No Streamlit or saving to a file yet, that's for later.
 
 ---
 
@@ -56,6 +56,8 @@ I haven't implemented or tested the actual logic yet since this is only Phase 1 
 
 - What behaviors did you test?
 - Why were these tests important?
+
+So far I have three tests in `tests/test_pawpal.py`. One checks that `mark_complete()` actually flips a task's `completed` flag to True, one checks that adding a task to a pet makes the pet's task list grow and that the task is really in there, and one checks that the Scheduler sorts tasks by due time across two different pets. I picked these because they're the basic pieces everything else depends on, if a task can't be completed or a pet can't hold its tasks, nothing above it would work. The sorting test also matters because it's the one spot that proves Scheduler is pulling from multiple pets and not just one. I ran them with `python -m pytest` and all three pass. I haven't tested a lot of edge cases yet since the logic is still pretty small.
 
 **b. Confidence**
 
