@@ -29,6 +29,14 @@ python main.py
 
 This builds a sample owner with two pets and a few tasks, then prints today's schedule sorted by due time.
 
+## Run the Streamlit app
+
+```bash
+streamlit run app.py
+```
+
+`app.py` is wired to the `pawpal_system.py` logic layer. Adding a pet creates a real `Pet` through `Owner.add_pet()`, scheduling a task creates a real `Task` added to the selected pet, and the schedule section uses `Scheduler` to sort tasks across all pets. Objects are kept in `st.session_state` for the browser session (nothing is saved to disk yet).
+
 ## What you will build
 
 Your final app should:
