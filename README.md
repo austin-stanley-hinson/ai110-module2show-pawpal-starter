@@ -69,14 +69,31 @@ pip install -r requirements.txt
 
 ## 🖥️ Sample Output
 
-Running `python main.py` prints a schedule like this (times come from "today" so they'll match the day you run it):
+Running `python main.py` shows sorting, filtering, recurring tasks, and conflict detection (times come from "today" so they'll match the day you run it):
 
 ```
-Today's Schedule
-----------------
-09:00 AM | Milo | Feed breakfast | Priority 1 | Incomplete
-12:30 PM | Luna | Give medication | Priority 1 | Incomplete
-05:00 PM | Milo | Evening walk | Priority 2 | Incomplete
+Sorted Schedule (by due time)
+-----------------------------
+08:00 AM | Milo | Feed breakfast | Priority 1 | daily | Incomplete
+12:30 PM | Luna | Give medication | Priority 1 | once | Incomplete
+03:00 PM | Milo | Vet call | Priority 3 | once | Incomplete
+03:00 PM | Luna | Grooming | Priority 2 | once | Incomplete
+05:00 PM | Milo | Evening walk | Priority 2 | once | Incomplete
+
+Incomplete Tasks for Milo
+-------------------------
+05:00 PM | Milo | Evening walk | Priority 2 | once | Incomplete
+08:00 AM | Milo | Feed breakfast | Priority 1 | daily | Incomplete
+03:00 PM | Milo | Vet call | Priority 3 | once | Incomplete
+
+Recurring Task Demo
+-------------------
+Completed: Feed breakfast for Milo.
+Next occurrence created: Feed breakfast on Jul 07 08:00 AM (daily).
+
+Conflict Warnings
+-----------------
+Conflict at Jul 06 03:00 PM -> Milo: Vet call, Luna: Grooming
 ```
 
 ## 🧪 Testing PawPal+
@@ -86,7 +103,7 @@ Today's Schedule
 python -m pytest
 ```
 
-Current coverage: three tests in `tests/test_pawpal.py` cover completing a task (`test_mark_complete`), adding a task to a pet (`test_add_task_to_pet`), and the scheduler sorting tasks by due time across pets (`test_scheduler_sorts_by_due_time`).
+Current coverage: `tests/test_pawpal.py` covers completing a task (`test_mark_complete`), adding a task to a pet (`test_add_task_to_pet`), sorting across pets (`test_scheduler_sorts_by_due_time`), filtering by pet/status (`test_filter_tasks_by_pet_and_status`), recurring task creation (`test_recurring_task_creates_next_occurrence`), and conflict detection (`test_detect_conflicts_on_same_due_time`).
 
 Sample test output:
 
@@ -94,23 +111,23 @@ Sample test output:
 ============================= test session starts ==============================
 platform darwin -- Python 3.13.7, pytest-9.1.1, pluggy-1.6.0
 rootdir: /Users/austinstanleyhinson/Desktop/AI-110/ai110-module2show-pawpal-starter
-collected 3 items
+collected 6 items
 
-tests/test_pawpal.py ...                                                 [100%]
+tests/test_pawpal.py ......                                              [100%]
 
-============================== 3 passed in 0.01s ===============================
+============================== 6 passed in 0.01s ===============================
 ```
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+The `Scheduler` works across every pet the owner has (not just one). Each feature maps to a method:
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | `Scheduler.sort_tasks_by_due_time()` | Returns all `(pet, task)` pairs sorted chronologically by `due_at`. |
+| Filtering | `Scheduler.filter_tasks(pet_name, completed)`, `Scheduler.filter_incomplete_tasks()` | Filter by pet name (case-insensitive) and/or completion status. |
+| Recurring tasks | `Task.create_next_occurrence()`, `Pet.complete_task()`, `Scheduler.complete_task()` | Completing a `daily`/`weekly` task auto-adds the next occurrence (`once` returns none). |
+| Conflict handling | `Scheduler.detect_conflicts()` | Flags tasks that share the exact same `due_at`. Only exact-time matches (no duration field yet). |
 
 ## 📸 Demo Walkthrough
 

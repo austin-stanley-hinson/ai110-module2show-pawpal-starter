@@ -31,10 +31,14 @@ Update after Phase 3: In this phase I connected the Streamlit interface in `app.
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+Up until this phase the logic felt kind of manual. I could add tasks and they'd get stored, but the app didn't really do much to organize them, it was basically just a list. In this phase I made the scheduler more useful. It now sorts tasks by due time so the schedule shows up in time order, it can filter tasks by pet name or by whether they're done, it handles recurring daily/weekly tasks, and it does a lightweight check for tasks scheduled at the exact same time. The main constraint I focused on is due time since that's what actually decides the order of someone's day. Priority is stored on each task and shown in the output, but I'm not sorting by it yet, I decided time mattered most for a daily plan.
+
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
+
+The main tradeoff is in how I detect conflicts. My `detect_conflicts()` only flags tasks that have the exact same `due_at` date and time. It does not check for tasks that overlap, like a 30-minute walk running into a feeding, because my Task class doesn't have a duration field. Adding real overlap checking would mean changing the data model to store how long each task takes, and that felt like more than this phase needs. So I kept the exact-time check on purpose to stay simple and match the assignment instead of trying to handle every real scheduling case.
 
 ---
 
@@ -44,6 +48,8 @@ Update after Phase 3: In this phase I connected the Streamlit interface in `app.
 
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
 - What kinds of prompts or questions were most helpful?
+
+For the scheduling phase I used AI mostly to brainstorm lightweight scheduling algorithms, since I wasn't sure how complicated conflict detection needed to be. It suggested a few options including a time-blocking approach that checks for overlapping time ranges. I didn't go with that one because my Task class doesn't store a duration, so overlap checking would've forced me to redesign the data model. I kept the simpler exact-time conflict check instead, which fits what I actually have. To make sure the new behavior worked I updated `main.py` to actually show the sorting, filtering, recurring task, and conflict output, and I added pytest tests for the new scheduler methods so I wasn't just trusting the printout.
 
 **b. Judgment and verification**
 
