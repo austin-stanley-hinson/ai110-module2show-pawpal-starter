@@ -67,10 +67,14 @@ For the scheduling phase I used AI mostly to brainstorm lightweight scheduling a
 
 So far I have three tests in `tests/test_pawpal.py`. One checks that `mark_complete()` actually flips a task's `completed` flag to True, one checks that adding a task to a pet makes the pet's task list grow and that the task is really in there, and one checks that the Scheduler sorts tasks by due time across two different pets. I picked these because they're the basic pieces everything else depends on, if a task can't be completed or a pet can't hold its tasks, nothing above it would work. The sorting test also matters because it's the one spot that proves Scheduler is pulling from multiple pets and not just one. I ran them with `python -m pytest` and all three pass. I haven't tested a lot of edge cases yet since the logic is still pretty small.
 
+Testing phase update: I focused on making sure the smarter scheduling logic actually worked instead of just looking right in the `main.py` demo. I grew the suite to 11 tests. The most important ones are sorting, recurrence, and conflict detection, since those are the parts most likely to break if I change the scheduler later. I also added a few edge cases: a `once` task shouldn't recur, an owner with no pets shouldn't crash any scheduler method, and distinct times should return no conflicts. AI helped me come up with edge cases I hadn't thought of, but I still had to line the tests up with my actual method names (`Pet.complete_task`, `Scheduler.complete_task`, `create_next_occurrence`, `detect_conflicts`) so they were checking real behavior and not made-up assumptions. When something didn't pass at first I had to stop and figure out whether the test was wrong or the code was wrong, and it was usually my test assuming the wrong return shape.
+
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
 - What edge cases would you test next if you had more time?
+
+I'm fairly confident, around 4 out of 5. The core object interactions and the scheduling algorithms all have tests and they pass, so I trust the main paths. I'm not fully confident because everything is in-memory and I haven't tested messy real-world input yet. If I had more time I'd test weird inputs from the UI (empty descriptions, tasks in the past), weekly recurrence specifically, and what happens when the same task description is used twice for one pet, since `Scheduler.complete_task` matches on description.
 
 ---
 

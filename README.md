@@ -103,7 +103,14 @@ Conflict at Jul 06 03:00 PM -> Milo: Vet call, Luna: Grooming
 python -m pytest
 ```
 
-Current coverage: `tests/test_pawpal.py` covers completing a task (`test_mark_complete`), adding a task to a pet (`test_add_task_to_pet`), sorting across pets (`test_scheduler_sorts_by_due_time`), filtering by pet/status (`test_filter_tasks_by_pet_and_status`), recurring task creation (`test_recurring_task_creates_next_occurrence`), and conflict detection (`test_detect_conflicts_on_same_due_time`).
+The 11 tests in `tests/test_pawpal.py` cover:
+
+- **Task completion** — `mark_complete()` flips `completed` to True.
+- **Adding tasks to pets** — `add_task()` grows a pet's task list.
+- **Scheduler sorting** — out-of-order tasks come back in chronological order (checked by description order and by ascending `due_at`).
+- **Recurring task behavior** — completing a daily task (via `Pet.complete_task()` and `Scheduler.complete_task()`) creates the next day's task, and a `once` task does not recur.
+- **Conflict detection** — two tasks at the same `due_at` are flagged, and distinct times return an empty list.
+- **Edge cases** — filtering by pet name (case-insensitive) and completion status, plus an empty owner not breaking any scheduler method.
 
 Sample test output:
 
@@ -111,12 +118,16 @@ Sample test output:
 ============================= test session starts ==============================
 platform darwin -- Python 3.13.7, pytest-9.1.1, pluggy-1.6.0
 rootdir: /Users/austinstanleyhinson/Desktop/AI-110/ai110-module2show-pawpal-starter
-collected 6 items
+collected 11 items
 
-tests/test_pawpal.py ......                                              [100%]
+tests/test_pawpal.py ...........                                         [100%]
 
-============================== 6 passed in 0.01s ===============================
+============================== 11 passed in 0.02s ===============================
 ```
+
+**Confidence Level: ★★★★☆**
+
+I'd give the system 4 out of 5 stars for reliability right now. The main object interactions and the scheduling algorithms are covered by automated tests, including sorting, recurring tasks, and conflict detection, plus a few edge cases like an empty owner. I'm not giving it 5 stars yet because everything is in-memory session data with no persistence, and I haven't covered every possible user input edge case (like weird times or bad input from the UI).
 
 ## 📐 Smarter Scheduling
 
