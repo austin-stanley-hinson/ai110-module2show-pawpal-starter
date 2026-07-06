@@ -1,0 +1,45 @@
+classDiagram
+    %% PawPal+ draft class diagram
+    %% Naming matches pawpal_system.py
+
+    class Owner {
+        +str name
+        +str email
+        +list~Pet~ pets
+        +add_pet(pet Pet) None
+        +list_pets() list~Pet~
+        +get_all_tasks() list~Task~
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +int age
+        +list~Task~ tasks
+        +add_task(task Task) None
+        +list_tasks() list~Task~
+        +get_incomplete_tasks() list~Task~
+    }
+
+    class Task {
+        +str description
+        +datetime due_at
+        +bool completed
+        +str priority
+        +mark_complete() None
+        +is_due_today() bool
+    }
+
+    class Scheduler {
+        +Owner owner
+        +get_all_tasks() list~Task~
+        +sort_tasks_by_due_time() list~Task~
+        +filter_incomplete_tasks() list~Task~
+        +tasks_due_today() list~Task~
+    }
+
+    Owner "1" --> "*" Pet : has many
+    Pet "1" --> "*" Task : has many
+    Scheduler "1" --> "1" Owner : manages
+    Scheduler ..> Pet : reads tasks across
+    Scheduler ..> Task : organizes
