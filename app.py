@@ -128,27 +128,63 @@ else:
 
 st.divider()
 
-# --- Schedule across all pets ---
-st.subheader("Schedule (all pets)")
+# Scheduler reads the current session owner, so it always reflects the latest
+# pets and tasks the user has added.
 scheduler = Scheduler(owner)
-sorted_pairs = scheduler.sort_tasks_by_due_time()
 
-if sorted_pairs:
-    st.table(
-        [
-            {
-                "Due": task.due_at.strftime("%a %b %d, %I:%M %p"),
-                "Pet": pet.name,
-                "Task": task.description,
-                "Priority": task.priority,
-                "Frequency": task.frequency,
-                "Status": "Complete" if task.completed else "Incomplete",
-            }
-            for pet, task in sorted_pairs
-        ]
-    )
+# --- Conflict warnings ---
+conflicts = scheduler.detect_conflicts()
+if conflicts:
+    st.subheader("⚠️ Schedule Conflicts")
+    st.caption("These tasks are scheduled at the exact same time — you may want to reschedule one.")
+    for warning in conflicts:
+        st.warning(warning)
+    st.divider()
 
-    # Let the user mark an incomplete task as complete.
+# --- Schedule across all pets ---
+st.subheader("Schedule")
+all_pairs = scheduler.get_all_tasks()
+
+if not all_pairs:
+    st.info("No tasks scheduled yet. Add a task above.")
+else:
+    filter_col1, filter_col2 = st.columns(2)
+    with filter_col1:
+        pet_choice = st.selectbox(
+            "Filter by pet", ["All pets"] + [pet.name for pet in owner.list_pets()]
+        )
+    with filter_col2:
+        status_choice = st.selectbox("Filter by status", ["All", "Incomplete", "Complete"])
+
+    pet_name = None if pet_choice == "All pets" else pet_choice
+    completed = None
+    if status_choice == "Incomplete":
+        completed = False
+    elif status_choice == "Complete":
+        completed = True
+
+    # Filter across all pets, then show in due-time order.
+    filtered = scheduler.filter_tasks(pet_name=pet_name, completed=completed)
+    filtered = sorted(filtered, key=lambda pair: pair[1].due_at)
+
+    if filtered:
+        st.table(
+            [
+                {
+                    "Due": task.due_at.strftime("%a %b %d, %I:%M %p"),
+                    "Pet": pet.name,
+                    "Task": task.description,
+                    "Priority": task.priority,
+                    "Frequency": task.frequency,
+                    "Status": "Complete" if task.completed else "Incomplete",
+                }
+                for pet, task in filtered
+            ]
+        )
+    else:
+        st.info("No tasks match the current filters.")
+
+    # Let the user mark an incomplete task complete (recurring tasks auto-roll over).
     incomplete_pairs = scheduler.filter_incomplete_tasks()
     if incomplete_pairs:
         with st.form("complete_task_form"):
@@ -159,9 +195,13 @@ if sorted_pairs:
             choice = st.selectbox("Mark a task complete", labels)
             complete_submitted = st.form_submit_button("Mark complete")
         if complete_submitted:
-            _, task_to_complete = incomplete_pairs[labels.index(choice)]
-            task_to_complete.mark_complete()
-            st.success("Task marked complete.")
+            pet_done, task_to_complete = incomplete_pairs[labels.index(choice)]
+            next_task = pet_done.complete_task(task_to_complete)
+            if next_task is not None:
+                st.success(
+                    f"Marked complete. Next {next_task.frequency} occurrence added for "
+                    f"{next_task.due_at.strftime('%b %d %I:%M %p')}."
+                )
+            else:
+                st.success("Task marked complete.")
             st.rerun()
-else:
-    st.info("No tasks scheduled yet. Add a task above.")

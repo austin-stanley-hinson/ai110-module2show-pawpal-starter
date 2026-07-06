@@ -20,6 +20,8 @@ The biggest change was with Scheduler. At first I had it working off a single Pe
 
 Update after Phase 2: I moved from the design into working code, so the UML skeleton is now real classes with actual method bodies instead of `pass`. The main thing I had to check was that Scheduler was not only looking at one pet, since the project expects it to organize tasks across multiple pets. I kept it working through the Owner, so Scheduler calls `owner.get_all_tasks()` and gets tasks from every pet at once. I built a small CLI demo in `main.py` and ran it before doing anything else, because it was easier to see from the terminal whether the objects were actually working together. I also added a couple of pytest tests for simple behavior like completing a task and adding a task to a pet. No Streamlit or saving to a file yet, that's for later.
 
+Update after the polish phase: I made a final UML in `diagrams/uml_final.mmd` and compared it to the code. It's close to my original draft, the four classes and their relationships didn't change, but I added the methods that showed up later like `Scheduler.filter_tasks`, `Scheduler.detect_conflicts`, `Task.create_next_occurrence`, and `Pet.complete_task`, and I updated `Task.priority` to an int. So the final diagram matches what I actually built instead of just the early plan. I also polished the Streamlit UI so it visibly uses the scheduler (sorted table, filter controls, and a conflict warning banner) instead of just storing tasks.
+
 Update after Phase 3: In this phase I connected the Streamlit interface in `app.py` to the classes from `pawpal_system.py`. The main issue was remembering that Streamlit reruns the whole script whenever a button is clicked, so at first the Owner kept getting recreated as an empty object and my pets would disappear. I fixed that by storing the Owner in `st.session_state` and only creating it if it isn't already there. Once the owner was stored there, adding a pet through the UI actually calls `Owner.add_pet()` with a real `Pet`, and scheduling a task creates a real `Task` and calls `Pet.add_task()` on the pet the user picked. The schedule section builds a `Scheduler` from the session owner each run so it always reads the current pets and tasks, and I show it as a table instead of raw objects. I also wired the "mark complete" option to `Task.mark_complete()`. This only lasts for the browser session though, nothing is saved once the app closes since I haven't added file saving.
 
 ---
@@ -56,6 +58,10 @@ For the scheduling phase I used AI mostly to brainstorm lightweight scheduling a
 - Describe one moment where you did not accept an AI suggestion as-is.
 - How did you evaluate or verify what the AI suggested?
 
+The clearest example was conflict detection. The AI suggested a duration-based / time-blocking approach that checks whether two tasks overlap in time. I didn't take it because my `Task` class doesn't store a duration, so I'd have had to redesign the data model just to support one feature. I went with the simpler exact-time check instead and wrote it down as a known tradeoff. It also suggested adding a few extra classes (like a separate TaskList or Schedule class), but I kept the four-class structure since the rubric cares about a clear OOP design and the extra classes didn't earn their keep. For the UI it leaned toward a more feature-heavy layout, and I kept mine focused on the core scheduler behavior so it stays readable. I verified suggestions by actually running them: `python3 main.py` shows the end-to-end behavior, and the pytest suite checks the specific methods, so I wasn't trusting code just because it looked plausible.
+
+Working across separate chat sessions for design, implementation, algorithms, testing, and this polish phase actually helped me stay organized, each session had one clear job instead of everything at once. The main thing I learned about being the lead architect is that the AI is good at producing options fast, but I'm the one who has to keep the project consistent (same method names across `app.py`, `main.py`, and the tests) and say no when a suggestion adds complexity the assignment doesn't need.
+
 ---
 
 ## 4. Testing and Verification
@@ -84,10 +90,16 @@ I'm fairly confident, around 4 out of 5. The core object interactions and the sc
 
 - What part of this project are you most satisfied with?
 
+I'm most happy with how the Scheduler turned out. Keeping it separate from Owner and Pet and having it work through `owner.get_all_tasks()` meant it naturally handles multiple pets, and adding sorting, filtering, recurring tasks, and conflict detection on top of that felt clean instead of hacky. It was also satisfying to see the same logic show up both in the CLI demo and the Streamlit UI without changing the backend.
+
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
 
+The obvious next step is persistence, right now everything lives in the browser session and disappears when the app closes, so I'd add saving/loading (probably JSON) so a pet owner's data sticks around. I'd also give `Task` a duration field so conflict detection could check real overlaps instead of only exact-time matches, and I'd make `Scheduler.complete_task` match on something more reliable than the task description since two tasks could share a name.
+
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+
+The biggest thing I learned is that starting from the design (UML and the four classes) made everything after it easier. Because I knew what each class owned, connecting the UI, adding algorithms, and writing tests were mostly about filling in clear pieces instead of guessing. And working with AI, I learned it's fastest when I already know the shape I want, so I can accept the parts that fit and reject the parts that would over-complicate it.

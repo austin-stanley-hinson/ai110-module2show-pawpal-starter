@@ -1,77 +1,64 @@
 # PawPal+ (Module 2 Project)
 
-You are building **PawPal+**, a Streamlit app that helps a pet owner plan care tasks for their pet.
+## Project Overview
 
-## Scenario
+**PawPal+** is a pet care planning assistant for a busy pet owner. It lets you add your pets, schedule care tasks for each one (walks, feeding, meds, grooming, etc.), and see everything in a single schedule sorted by time. The `Scheduler` pulls tasks together across all of your pets, supports simple daily/weekly recurring tasks, and warns you when two tasks are booked for the exact same time. It runs both as a Streamlit web app and as a command-line demo.
 
-A busy pet owner needs help staying consistent with pet care. They want an assistant that can:
+## Features
 
-- Track pet care tasks (walks, feeding, meds, enrichment, grooming, etc.)
-- Consider constraints (time available, priority, owner preferences)
-- Produce a daily plan and explain why it chose that plan
+- Add pets to an owner profile (name, species, age)
+- Schedule care tasks for a selected pet (description, due date/time, priority, frequency)
+- View a schedule sorted by due time across all pets
+- Filter tasks by pet and/or completion status
+- Daily and weekly recurring tasks that roll over when completed
+- Conflict warnings when two tasks share the exact same time
+- Streamlit UI (`app.py`) and a CLI demo (`main.py`)
+- Pytest test suite covering the core behaviors
 
-Your job is to design the system first (UML), then implement the logic in Python, then connect it to the Streamlit UI.
+## Running the Project
 
-## Backend classes (current state)
-
-The logic layer lives in `pawpal_system.py` and has four classes:
-
-- **Task** — one care item. Holds `description`, `due_at`, `completed`, `priority`, and `frequency`. Can `mark_complete()` and check `is_due_today()`.
-- **Pet** — a single animal with `name`, `species`, `age`, and its own `tasks` list. Can `add_task()`, `list_tasks()`, and `get_incomplete_tasks()`.
-- **Owner** — the person using the app. Holds `name`, `email`, and a list of `pets`. Can `add_pet()`, `list_pets()`, and `get_all_tasks()` (which returns `(pet, task)` pairs across every pet).
-- **Scheduler** — takes an `Owner` and works across all of that owner's pets. Can `sort_tasks_by_due_time()`, `filter_incomplete_tasks()`, `tasks_due_today()`, and `format_schedule()` for readable output.
-
-## Run the demo
+Install dependencies, then run either entry point:
 
 ```bash
-python main.py
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-This builds a sample owner with two pets and a few tasks, then prints today's schedule sorted by due time.
-
-## Run the Streamlit app
+Streamlit web app:
 
 ```bash
 streamlit run app.py
 ```
 
-`app.py` is wired to the `pawpal_system.py` logic layer. Adding a pet creates a real `Pet` through `Owner.add_pet()`, scheduling a task creates a real `Task` added to the selected pet, and the schedule section uses `Scheduler` to sort tasks across all pets. Objects are kept in `st.session_state` for the browser session (nothing is saved to disk yet).
-
-## What you will build
-
-Your final app should:
-
-- Let a user enter basic owner + pet info
-- Let a user add/edit tasks (duration + priority at minimum)
-- Generate a daily schedule/plan based on constraints and priorities
-- Display the plan clearly (and ideally explain the reasoning)
-- Include tests for the most important scheduling behaviors
-
-## Getting started
-
-### Setup
+Command-line demo:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+python3 main.py
 ```
 
-### Suggested workflow
+## Class Design
 
-1. Read the scenario carefully and identify requirements and edge cases.
-2. Draft a UML diagram (classes, attributes, methods, relationships).
-3. Convert UML into Python class stubs (no logic yet).
-4. Implement scheduling logic in small increments.
-5. Add tests to verify key behaviors.
-6. Connect your logic to the Streamlit UI in `app.py`.
-7. Refine UML so it matches what you actually built.
+The logic layer lives in `pawpal_system.py` and has four classes (see `diagrams/uml_final.mmd`):
+
+- **Task** — one care item. Holds `description`, `due_at`, `completed`, `priority`, and `frequency`. Can `mark_complete()`, `is_due_today()`, and `create_next_occurrence()` for recurring tasks.
+- **Pet** — a single animal with `name`, `species`, `age`, and its own `tasks` list. Can `add_task()`, `list_tasks()`, `get_incomplete_tasks()`, and `complete_task()` (which also adds the next recurring occurrence).
+- **Owner** — the person using the app. Holds `name`, `email`, and a list of `pets`. Can `add_pet()`, `list_pets()`, and `get_all_tasks()` (returns `(pet, task)` pairs across every pet).
+- **Scheduler** — takes an `Owner` and works across all of that owner's pets. Handles the algorithmic behavior: sorting, filtering, conflict detection, and completing tasks. It is kept separate from `Owner`/`Pet` so the "figure out the plan" logic isn't crammed into the data classes.
 
 ## 🖥️ Sample Output
 
-Running `python main.py` shows sorting, filtering, recurring tasks, and conflict detection (times come from "today" so they'll match the day you run it):
+Running `python3 main.py` shows sorting, filtering, recurring tasks, and conflict detection (times come from "today" so they'll match the day you run it):
 
 ```
+Today's Schedule
+----------------
+05:00 PM | Milo | Evening walk | Priority 2 | once | Incomplete
+08:00 AM | Milo | Feed breakfast | Priority 1 | daily | Incomplete
+03:00 PM | Milo | Vet call | Priority 3 | once | Incomplete
+12:30 PM | Luna | Give medication | Priority 1 | once | Incomplete
+03:00 PM | Luna | Grooming | Priority 2 | once | Incomplete
+
 Sorted Schedule (by due time)
 -----------------------------
 08:00 AM | Milo | Feed breakfast | Priority 1 | daily | Incomplete
@@ -100,7 +87,7 @@ Conflict at Jul 06 03:00 PM -> Milo: Vet call, Luna: Grooming
 
 ```bash
 # Run the full test suite from the repo root:
-python -m pytest
+python3 -m pytest
 ```
 
 The 11 tests in `tests/test_pawpal.py` cover:
@@ -142,12 +129,16 @@ The `Scheduler` works across every pet the owner has (not just one). Each featur
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+The Streamlit app (`streamlit run app.py`) walks through the core scheduler behavior:
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+1. **Set the owner.** Enter an owner name and email at the top. The `Owner` object is kept in `st.session_state`, so your pets and tasks don't disappear when Streamlit reruns the script.
+2. **Add a pet.** Fill in name, species, and age, then click *Add pet*. This calls `Owner.add_pet()` with a real `Pet`, and you'll see a success message and the pet in the "Current Pets" table.
+3. **Schedule a task.** Pick a pet, type a description, choose a due date + time, priority, and frequency (once/daily/weekly), then click *Add task*. This builds a real `Task` and calls `Pet.add_task()`.
+4. **View the sorted schedule.** The "Schedule" section uses `Scheduler.sort_tasks_by_due_time()` to show every task across all pets in time order, rendered as a table (not raw objects).
+5. **Filter.** Narrow the schedule by pet and/or completion status using `Scheduler.filter_tasks(...)`.
+6. **See conflict warnings.** If you schedule two tasks (for the same or different pets) at the exact same date and time, `Scheduler.detect_conflicts()` shows a yellow warning banner so you can reschedule.
+7. **Complete tasks.** Marking a task complete calls `Pet.complete_task()`; if the task was daily/weekly, the next occurrence is automatically added.
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+Example workflow: *add a pet → schedule a task → schedule a second task at the same time → see the conflict warning → view the sorted schedule → mark a task complete.*
+
+The CLI demo (`python3 main.py`) shows the same `Scheduler` behavior in the terminal — see the [Sample Output](#-sample-output) above.
