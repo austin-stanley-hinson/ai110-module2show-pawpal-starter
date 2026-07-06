@@ -98,6 +98,8 @@ I'm most happy with how the Scheduler turned out. Keeping it separate from Owner
 
 The obvious next step is persistence, right now everything lives in the browser session and disappears when the app closes, so I'd add saving/loading (probably JSON) so a pet owner's data sticks around. I'd also give `Task` a duration field so conflict detection could check real overlaps instead of only exact-time matches, and I'd make `Scheduler.complete_task` match on something more reliable than the task description since two tasks could share a name.
 
+**Optional extensions (stretch work):** I ended up doing two of these as stretch features. First I added a "next available slot" algorithm (`Scheduler.suggest_next_available_slot`) because it builds directly on the conflict-detection idea, it just walks fixed 30-minute slots and returns the first time no task is using. The tradeoff is the same as conflict detection: it only checks fixed intervals and exact `due_at` matches, not real calendar durations, since `Task` still has no duration field. Second I added JSON persistence with custom `to_dict`/`from_dict` methods on Task, Pet, and Owner plus `save_to_json`/`load_from_json`. I chose custom conversion instead of adding a serialization library because it was easier to understand and didn't add a dependency. It's still just a local `data.json` file, not a database, so it's simple persistence rather than anything robust. AI helped scaffold the conversion methods, but I checked the datetime serialization myself (saving as ISO strings and loading back into real `datetime` objects) and added a round-trip test to prove it.
+
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?

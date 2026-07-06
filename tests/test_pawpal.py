@@ -164,3 +164,71 @@ def test_no_conflicts_returns_empty_list():
 
     scheduler = Scheduler(owner)
     assert scheduler.detect_conflicts() == []
+
+
+def test_suggest_next_available_slot():
+    """First open 30-min slot after two occupied ones should be returned."""
+    owner, milo, _ = _two_pet_owner()
+    milo.add_task(Task("A", datetime(2026, 7, 6, 9, 0)))
+    milo.add_task(Task("B", datetime(2026, 7, 6, 9, 30)))
+
+    scheduler = Scheduler(owner)
+    slot = scheduler.suggest_next_available_slot(
+        datetime(2026, 7, 6).date(), start_hour=9
+    )
+    assert slot == datetime(2026, 7, 6, 10, 0)
+
+
+def test_suggest_next_available_slot_returns_none_when_full():
+    """A one-slot window that is occupied should return None."""
+    owner, milo, _ = _two_pet_owner()
+    milo.add_task(Task("A", datetime(2026, 7, 6, 9, 0)))
+
+    scheduler = Scheduler(owner)
+    slot = scheduler.suggest_next_available_slot(
+        datetime(2026, 7, 6).date(), start_hour=9, end_hour=9
+    )
+    assert slot is None
+
+
+def test_task_to_dict_from_dict_preserves_fields():
+    """Task round-trips through to_dict/from_dict with all fields intact."""
+    task = Task(
+        "Vet check-up",
+        datetime(2026, 7, 6, 10, 0),
+        completed=True,
+        priority=1,
+        frequency="weekly",
+    )
+    restored = Task.from_dict(task.to_dict())
+
+    assert restored.description == "Vet check-up"
+    assert restored.due_at == datetime(2026, 7, 6, 10, 0)
+    assert isinstance(restored.due_at, datetime)
+    assert restored.completed is True
+    assert restored.priority == 1
+    assert restored.frequency == "weekly"
+
+
+def test_persistence_round_trip(tmp_path):
+    """Saving an owner to JSON and loading it back should preserve the data."""
+    owner = Owner(name="Austin Demo", email="austin@example.com")
+    milo = Pet(name="Milo", species="dog", age=4)
+    milo.add_task(
+        Task("Feed breakfast", datetime(2026, 7, 6, 8, 0), priority=1, frequency="daily")
+    )
+    owner.add_pet(milo)
+    owner.add_pet(Pet(name="Luna", species="cat", age=2))
+
+    path = tmp_path / "test_data.json"
+    owner.save_to_json(str(path))
+    loaded = Owner.load_from_json(str(path))
+
+    assert loaded.name == "Austin Demo"
+    assert len(loaded.list_pets()) == 2
+
+    loaded_task = loaded.list_pets()[0].list_tasks()[0]
+    assert loaded_task.description == "Feed breakfast"
+    assert loaded_task.due_at == datetime(2026, 7, 6, 8, 0)
+    assert isinstance(loaded_task.due_at, datetime)
+    assert loaded_task.frequency == "daily"

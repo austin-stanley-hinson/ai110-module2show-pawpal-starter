@@ -3,3 +3,7 @@ __pycache__/
 .venv_new/
 .pytest_cache/
 .DS_Store
+
+# Generated local data (owner/pet/task persistence)
+data.json
+demo_data.json

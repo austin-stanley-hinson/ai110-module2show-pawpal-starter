@@ -5,10 +5,13 @@ Real Owner, Pet, and Task objects are kept in st.session_state for the session.
 """
 
 from datetime import datetime, time as time_cls
+from pathlib import Path
 
 import streamlit as st
 
 from pawpal_system import Owner, Pet, Scheduler, Task
+
+DATA_FILE = "data.json"
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
@@ -18,7 +21,7 @@ st.markdown(
     """
 PawPal+ helps a pet owner plan care tasks across all of their pets.
 This app uses the backend classes in `pawpal_system.py` (Owner, Pet, Task, Scheduler).
-Data lives in your browser session only — it resets when you close the app.
+Pets and tasks are saved to `data.json`, so they persist between runs.
 """
 )
 
@@ -30,12 +33,29 @@ for their pet(s) based on things like due time and priority.
 """
     )
 
+
+def save_owner() -> None:
+    """Persist the session owner to the JSON data file."""
+    st.session_state.owner.save_to_json(DATA_FILE)
+
+
 # Streamlit reruns this whole script on every interaction, so we only create the
-# Owner once and keep it in session_state. Otherwise it would reset on each click.
+# Owner once and keep it in session_state. On first load we restore from disk if
+# a data file exists; otherwise we start a fresh owner.
 if "owner" not in st.session_state:
-    st.session_state.owner = Owner(name="Demo Owner", email="")
+    if Path(DATA_FILE).exists():
+        st.session_state.owner = Owner.load_from_json(DATA_FILE)
+        st.session_state.loaded_from_file = True
+    else:
+        st.session_state.owner = Owner(name="Demo Owner", email="")
+        st.session_state.loaded_from_file = False
 
 owner = st.session_state.owner
+
+if st.session_state.get("loaded_from_file"):
+    st.caption(f"Loaded saved data from `{DATA_FILE}`.")
+else:
+    st.info("No saved data yet — started a fresh owner. Add a pet to create `data.json`.")
 
 st.divider()
 
@@ -63,7 +83,8 @@ with st.form("add_pet_form", clear_on_submit=True):
 if add_pet_submitted:
     if pet_name.strip():
         owner.add_pet(Pet(name=pet_name.strip(), species=species, age=int(age)))
-        st.success(f"Added {pet_name.strip()} to {owner.name}'s pets.")
+        save_owner()
+        st.success(f"Added {pet_name.strip()} to {owner.name}'s pets (saved).")
     else:
         st.warning("Please enter a pet name.")
 
@@ -103,7 +124,8 @@ else:
                     frequency=frequency,
                 )
             )
-            st.success(f"Added '{description.strip()}' for {selected_pet.name}.")
+            save_owner()
+            st.success(f"Added '{description.strip()}' for {selected_pet.name} (saved).")
         else:
             st.warning("Please enter a task description.")
 
@@ -197,6 +219,7 @@ else:
         if complete_submitted:
             pet_done, task_to_complete = incomplete_pairs[labels.index(choice)]
             next_task = pet_done.complete_task(task_to_complete)
+            save_owner()
             if next_task is not None:
                 st.success(
                     f"Marked complete. Next {next_task.frequency} occurrence added for "
@@ -205,3 +228,36 @@ else:
             else:
                 st.success("Task marked complete.")
             st.rerun()
+
+st.divider()
+
+# --- Next available slot ---
+st.subheader("Next Available Slot")
+st.caption("Finds the first open 30-minute slot (8:00 AM–8:00 PM) that no task uses.")
+slot_date = st.date_input("Check date", value=datetime.now().date(), key="slot_date")
+suggested_slot = scheduler.suggest_next_available_slot(slot_date)
+if suggested_slot is not None:
+    st.info(
+        f"Next available slot on {slot_date.strftime('%b %d')}: "
+        f"{suggested_slot.strftime('%I:%M %p')}"
+    )
+else:
+    st.warning("No open slots in the 8:00 AM–8:00 PM window on that date.")
+
+st.divider()
+
+# --- Data persistence controls ---
+st.subheader("Data")
+data_col1, data_col2 = st.columns(2)
+with data_col1:
+    if st.button("💾 Save data"):
+        save_owner()
+        st.success(f"Saved to {DATA_FILE}.")
+with data_col2:
+    if st.button("🔄 Reload data"):
+        if Path(DATA_FILE).exists():
+            st.session_state.owner = Owner.load_from_json(DATA_FILE)
+            st.session_state.loaded_from_file = True
+            st.rerun()
+        else:
+            st.warning("No saved data file to reload yet.")

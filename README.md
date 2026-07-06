@@ -81,6 +81,14 @@ Next occurrence created: Feed breakfast on Jul 07 08:00 AM (daily).
 Conflict Warnings
 -----------------
 Conflict at Jul 06 03:00 PM -> Milo: Vet call, Luna: Grooming
+
+Next Available Slot Demo
+------------------------
+First open 30-min slot on Jul 06 (from 8:00 AM): 08:30 AM
+
+Persistence Demo
+----------------
+Loaded owner Jordan with 2 pets and 6 tasks from JSON.
 ```
 
 ## 🧪 Testing PawPal+
@@ -90,13 +98,15 @@ Conflict at Jul 06 03:00 PM -> Milo: Vet call, Luna: Grooming
 python3 -m pytest
 ```
 
-The 11 tests in `tests/test_pawpal.py` cover:
+The 15 tests in `tests/test_pawpal.py` cover:
 
 - **Task completion** — `mark_complete()` flips `completed` to True.
 - **Adding tasks to pets** — `add_task()` grows a pet's task list.
 - **Scheduler sorting** — out-of-order tasks come back in chronological order (checked by description order and by ascending `due_at`).
 - **Recurring task behavior** — completing a daily task (via `Pet.complete_task()` and `Scheduler.complete_task()`) creates the next day's task, and a `once` task does not recur.
 - **Conflict detection** — two tasks at the same `due_at` are flagged, and distinct times return an empty list.
+- **Next available slot** — returns the first open slot and `None` when the window is full.
+- **Persistence** — `Task.to_dict()/from_dict()` preserves fields, and an Owner survives a save/load round trip with datetimes intact.
 - **Edge cases** — filtering by pet name (case-insensitive) and completion status, plus an empty owner not breaking any scheduler method.
 
 Sample test output:
@@ -105,16 +115,16 @@ Sample test output:
 ============================= test session starts ==============================
 platform darwin -- Python 3.13.7, pytest-9.1.1, pluggy-1.6.0
 rootdir: /Users/austinstanleyhinson/Desktop/AI-110/ai110-module2show-pawpal-starter
-collected 11 items
+collected 15 items
 
-tests/test_pawpal.py ...........                                         [100%]
+tests/test_pawpal.py ...............                                     [100%]
 
-============================== 11 passed in 0.02s ===============================
+============================== 15 passed in 0.07s ===============================
 ```
 
 **Confidence Level: ★★★★☆**
 
-I'd give the system 4 out of 5 stars for reliability right now. The main object interactions and the scheduling algorithms are covered by automated tests, including sorting, recurring tasks, and conflict detection, plus a few edge cases like an empty owner. I'm not giving it 5 stars yet because everything is in-memory session data with no persistence, and I haven't covered every possible user input edge case (like weird times or bad input from the UI).
+I'd give the system 4 out of 5 stars for reliability right now. The main object interactions and the scheduling algorithms are covered by automated tests, including sorting, recurring tasks, conflict detection, next-available-slot, and the JSON save/load round trip. I'm not giving it 5 stars yet because persistence is just a local JSON file (not a real database), and I haven't covered every possible user input edge case (like weird times or bad input from the UI).
 
 ## 📐 Smarter Scheduling
 
@@ -142,3 +152,27 @@ The Streamlit app (`streamlit run app.py`) walks through the core scheduler beha
 Example workflow: *add a pet → schedule a task → schedule a second task at the same time → see the conflict warning → view the sorted schedule → mark a task complete.*
 
 The CLI demo (`python3 main.py`) shows the same `Scheduler` behavior in the terminal — see the [Sample Output](#-sample-output) above.
+
+## 🚀 Optional Extensions
+
+Two stretch features were added on top of the core project.
+
+### Advanced Algorithmic Capability: Next Available Slot
+
+`Scheduler.suggest_next_available_slot(date, start_hour=8, end_hour=20, interval_minutes=30)` looks at every task across all pets and returns the first open time slot on a given date, checking fixed intervals (every 30 minutes by default). It returns a `datetime` for the first free slot, or `None` if the whole window is taken. There's also a helper `Scheduler.get_occupied_slots(date)`.
+
+**Limitation (deliberate):** it only checks fixed exact-time slots. It does not consider task durations or overlapping time ranges, because `Task` has no duration field. This keeps the feature simple and consistent with how conflict detection already works.
+
+### Data Persistence (JSON)
+
+`Owner`, `Pet`, and `Task` can be saved to and loaded from a JSON file using custom dictionary conversion (no extra libraries):
+
+- `Task.to_dict()` / `Task.from_dict(data)` — `due_at` is stored as an ISO string and parsed back into a `datetime`.
+- `Pet.to_dict()` / `Pet.from_dict(data)` — rebuilds its `Task` objects.
+- `Owner.to_dict()` / `Owner.from_dict(data)` — rebuilds its `Pet` objects.
+- `Owner.save_to_json(filepath="data.json")` / `Owner.load_from_json(filepath="data.json")`.
+- Module helper `load_owner_or_default(filepath, default_name)` for a simple "load if it exists, else fresh owner" flow.
+
+In `app.py`, the owner is loaded from `data.json` on first run and saved automatically whenever you add a pet or task (with manual **Save data** / **Reload data** buttons too). `data.json` and `demo_data.json` are git-ignored since they're generated local data.
+
+**Files modified for the extensions:** `pawpal_system.py`, `app.py`, `main.py`, `tests/test_pawpal.py`, `README.md`, `ai_interactions.md`.

@@ -1,11 +1,14 @@
 """PawPal+ logic layer.
 
 Working backend classes for the PawPal+ pet care planner: Task, Pet, Owner,
-and a Scheduler that organizes tasks across all of an owner's pets.
+and a Scheduler that organizes tasks across all of an owner's pets. Owner/Pet/Task
+can be saved to and loaded from JSON via to_dict()/from_dict().
 """
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from pathlib import Path
 
 
 @dataclass
@@ -44,6 +47,27 @@ class Task:
             frequency=self.frequency,
         )
 
+    def to_dict(self) -> dict:
+        """Convert this task to a JSON-friendly dict (due_at as ISO string)."""
+        return {
+            "description": self.description,
+            "due_at": self.due_at.isoformat(),
+            "completed": self.completed,
+            "priority": self.priority,
+            "frequency": self.frequency,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Task":
+        """Rebuild a Task from a dict, parsing due_at back into a datetime."""
+        return cls(
+            description=data.get("description", ""),
+            due_at=datetime.fromisoformat(data["due_at"]),
+            completed=data.get("completed", False),
+            priority=data.get("priority", 3),
+            frequency=data.get("frequency", "once"),
+        )
+
     def __str__(self) -> str:
         """Human-readable one-line summary of the task."""
         status = "Complete" if self.completed else "Incomplete"
@@ -80,6 +104,27 @@ class Pet:
             self.add_task(next_task)
         return next_task
 
+    def to_dict(self) -> dict:
+        """Convert this pet (and its tasks) to a JSON-friendly dict."""
+        return {
+            "name": self.name,
+            "species": self.species,
+            "age": self.age,
+            "tasks": [task.to_dict() for task in self.tasks],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Pet":
+        """Rebuild a Pet from a dict, restoring its Task objects."""
+        pet = cls(
+            name=data.get("name", ""),
+            species=data.get("species", ""),
+            age=data.get("age"),
+        )
+        for task_data in data.get("tasks", []):
+            pet.add_task(Task.from_dict(task_data))
+        return pet
+
 
 @dataclass
 class Owner:
@@ -104,6 +149,43 @@ class Owner:
             for task in pet.list_tasks():
                 pairs.append((pet, task))
         return pairs
+
+    def to_dict(self) -> dict:
+        """Convert this owner (and all pets/tasks) to a JSON-friendly dict."""
+        return {
+            "name": self.name,
+            "email": self.email,
+            "pets": [pet.to_dict() for pet in self.pets],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Owner":
+        """Rebuild an Owner from a dict, restoring its Pet objects."""
+        owner = cls(name=data.get("name", ""), email=data.get("email", ""))
+        for pet_data in data.get("pets", []):
+            owner.add_pet(Pet.from_dict(pet_data))
+        return owner
+
+    def save_to_json(self, filepath: str = "data.json") -> None:
+        """Write this owner's data to a formatted JSON file."""
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, indent=2)
+
+    @classmethod
+    def load_from_json(cls, filepath: str = "data.json") -> "Owner":
+        """Load an Owner from a JSON file. Raises FileNotFoundError if missing."""
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return cls.from_dict(data)
+
+
+def load_owner_or_default(
+    filepath: str = "data.json", default_name: str = "Demo Owner"
+) -> Owner:
+    """Load an Owner from JSON if the file exists, otherwise return a fresh Owner."""
+    if Path(filepath).exists():
+        return Owner.load_from_json(filepath)
+    return Owner(name=default_name, email="")
 
 
 class Scheduler:
@@ -171,6 +253,37 @@ class Scheduler:
         return [
             pair for pair in self.get_all_tasks() if pair[1].is_due_today(current_time)
         ]
+
+    def get_occupied_slots(self, date) -> set:
+        """Return the set of due_at datetimes already taken on the given date."""
+        target = date.date() if isinstance(date, datetime) else date
+        return {
+            task.due_at
+            for _, task in self.get_all_tasks()
+            if task.due_at.date() == target
+        }
+
+    def suggest_next_available_slot(
+        self, date, start_hour: int = 8, end_hour: int = 20, interval_minutes: int = 30
+    ) -> datetime | None:
+        """Find the first open time slot on `date`, checking fixed intervals.
+
+        Walks from start_hour to end_hour in interval_minutes steps and returns
+        the first datetime not already used by a task. A slot is "taken" only if
+        a task has the exact same due_at. This intentionally does NOT consider
+        task durations or overlapping ranges, because Task has no duration field.
+        Returns None if every slot in the window is taken.
+        """
+        target = date.date() if isinstance(date, datetime) else date
+        occupied = self.get_occupied_slots(target)
+        slot = datetime(target.year, target.month, target.day, start_hour, 0)
+        end = datetime(target.year, target.month, target.day, end_hour, 0)
+        step = timedelta(minutes=interval_minutes)
+        while slot <= end:
+            if slot not in occupied:
+                return slot
+            slot += step
+        return None
 
     def format_schedule(self, tasks: list[tuple[Pet, Task]] | None = None) -> str:
         """Build a readable multi-line schedule string from (pet, task) pairs."""

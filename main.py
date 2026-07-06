@@ -1,10 +1,12 @@
 """CLI demo for PawPal+.
 
-Shows the scheduler algorithms: sorting, filtering, recurring tasks, and
-conflict detection across multiple pets. Run with: python main.py
+Shows the scheduler algorithms (sorting, filtering, recurring tasks, conflict
+detection), plus the optional extensions: next-available-slot and JSON
+persistence. Run with: python3 main.py
 """
 
 from datetime import datetime
+from pathlib import Path
 
 from pawpal_system import Owner, Pet, Scheduler, Task
 
@@ -85,6 +87,31 @@ def main() -> None:
             print(warning)
     else:
         print("No conflicts found.")
+
+    print("\nNext Available Slot Demo")
+    print("------------------------")
+    today = datetime.now().date()
+    # 8:00 is taken by "Feed breakfast", so the next 30-min slot should be 8:30.
+    suggestion = scheduler.suggest_next_available_slot(today, start_hour=8)
+    if suggestion is not None:
+        print(
+            f"First open 30-min slot on {today.strftime('%b %d')} "
+            f"(from 8:00 AM): {suggestion.strftime('%I:%M %p')}"
+        )
+    else:
+        print("No open slots found in the 8:00 AM-8:00 PM window.")
+
+    print("\nPersistence Demo")
+    print("----------------")
+    demo_path = "demo_data.json"
+    owner.save_to_json(demo_path)
+    loaded = Owner.load_from_json(demo_path)
+    print(
+        f"Loaded owner {loaded.name} with {len(loaded.list_pets())} pets and "
+        f"{len(loaded.get_all_tasks())} tasks from JSON."
+    )
+    # Clean up the demo file so it doesn't clutter the repo.
+    Path(demo_path).unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
